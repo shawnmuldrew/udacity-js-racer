@@ -3,9 +3,11 @@
 // The store will hold all information needed globally
 var store = {
 	track_id: undefined,
-	track_name: undefined,
 	player_id: undefined,
 	race_id: undefined,
+	track_segments: undefined,
+	tracks: undefined,
+	racers: undefined
 }
 
 // We need our javascript to wait until the DOM is loaded
@@ -18,12 +20,14 @@ async function onPageLoad() {
 	try {
 		await getTracks()
 			.then(tracks => {
+				store.tracks = tracks
 				const html = renderTrackCards(tracks)
 				renderAt('#tracks', html)
 			})
 
 		await getRacers()
 			.then((racers) => {
+				store.racers = racers
 				const html = renderRacerCars(racers)
 				renderAt('#racers', html)
 			})
@@ -76,7 +80,8 @@ async function delay(ms) {
 // This async function controls the flow of the race, add the logic and error handling
 async function handleCreateRace() {
 	// render starting UI
-	renderAt('#race', renderRaceStartView({name: store.track_name}))
+	const track = store.tracks.filter(track => track.id.toString() === store.track_id)
+	renderAt('#race', renderRaceStartView(track[0]))
 
 	// TODO - Get player_id and track_id from the store
 	const player_id = store.player_id
@@ -85,7 +90,7 @@ async function handleCreateRace() {
 	const race = await createRace(player_id, track_id)
 	// TODO - update the store with the race id
 	store.race_id = (race.ID-1).toString()
-	console.log(race)
+	console.log(store)
 	// The race has been created, now start the countdown
 	// TODO - call the async function runCountdown
 	await runCountdown()
@@ -101,7 +106,6 @@ async function runRace(raceID) {
 		let raceInterval = setInterval(() => {
 			getRace(raceID)
 				.then((raceInfo) => {
-					console.log(raceInfo)
 					if (raceInfo.status === 'in-progress') {
 							/* 
 								TODO - if the race info status property is "in-progress", update the leaderboard by calling:
@@ -153,7 +157,7 @@ async function runCountdown() {
 }
 
 function handleSelectPodRacer(target) {
-	console.log("selected a pod", target.id)
+	console.log("selected racer", target.id)
 
 	// remove class selected from all racer options
 	const selected = document.querySelector('#racers .selected')
@@ -169,7 +173,7 @@ function handleSelectPodRacer(target) {
 }
 
 function handleSelectTrack(target) {
-	console.log("selected a track", target.id)
+	console.log("selected track", target.id)
 	// remove class selected from all track options
 	const selected = document.querySelector('#tracks .selected')
 	if(selected) {
@@ -180,7 +184,6 @@ function handleSelectTrack(target) {
 	target.classList.add('selected')
 
 	// TODO - save the selected track id to the store
-	console.log(target)
 	store.track_id = target.id
 }
 
@@ -230,7 +233,6 @@ function renderTrackCards(tracks) {
 	}
 
 	const results = tracks.map(renderTrackCard).join('')
-	console.log(tracks)
 	return `
 		<ul id="tracks">
 			${results}
@@ -290,27 +292,45 @@ function resultsView(positions) {
 }
 
 function raceProgress(positions) {
-	let userPlayer = positions.find(e => e.id === parseInt(store.player_id))  // Cnverted to integer
+	let userPlayer = positions.find(e => e.id === parseInt(store.player_id))  // Converted to integer
 	userPlayer.driver_name += " (you)"
 
 	positions = positions.sort((a, b) => (a.segment > b.segment) ? -1 : 1)
 	let count = 1
+	console.log(positions)
 
 	const results = positions.map(p => {
 		return `
 			<tr>
 				<td>
-					<h3>${count++} - ${p.driver_name}</h3>
+					<h4>${count++} - ${p.driver_name}</h4>
 				</td>
 			</tr>
 		`
 	})
+
+	let car1_segment = positions[0].segment
+	const car_images = 
+		`
+			<style> span#car1 {padding-left:${car1_segment}px;} </style>
+			<style> span.finish {position: absolute; left: 240px;} </style>
+			<tr>
+				<td>
+					<span>|</span><span id="car1">Car1</span><span class="finish">|</span>
+				</td>
+			</tr>				
+		`
 
 	return `
 		<main>
 			<h3>Leaderboard</h3>
 			<section id="leaderBoard">
 				${results}
+			</section>
+			<h3>Race Track</h3>
+			<style> section#raceTrackImage {position: relative; width: 250px;} </style>
+			<section id="raceTrackImage">
+				${car_images}
 			</section>
 		</main>
 	`
@@ -378,7 +398,6 @@ function getRace(id) {
 }
 
 function startRace(id) {
-	console.log(`In startRace with id ${id}`)
 	return fetch(`${SERVER}/api/races/${id}/start`, {
 		method: 'POST',
 		...defaultFetchOpts()
