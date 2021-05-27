@@ -91,7 +91,9 @@ async function handleCreateRace() {
 	// TODO - update the store with the race id
 	store.race_id = (race.ID-1).toString()
 	console.log(store)
-	// The race has been created, now start the countdown
+	// Get the segments for the track for this race - will use to show race graphically
+	store.track_segments = (store.tracks.find(track => track.id.toString() === track_id)).segments.length
+	// The race has been created, now start the countdowns
 	// TODO - call the async function runCountdown
 	await runCountdown()
 	// TODO - call the async function startRace
@@ -297,7 +299,7 @@ function raceProgress(positions) {
 
 	positions = positions.sort((a, b) => (a.segment > b.segment) ? -1 : 1)
 	let count = 1
-	console.log(positions)
+	//console.log(positions)
 
 	const results = positions.map(p => {
 		return `
@@ -309,17 +311,29 @@ function raceProgress(positions) {
 		`
 	})
 
-	let car1_segment = positions[0].segment
-	const car_images = 
-		`
-			<style> span#car1 {padding-left:${car1_segment}px;} </style>
-			<style> span.finish {position: absolute; left: 240px;} </style>
-			<tr>
-				<td>
-					<span>|</span><span id="car1">Car1</span><span class="finish">|</span>
-				</td>
-			</tr>				
-		`
+	
+	// let car1_segment = (positions.find(position => position.id === 1)).segment.toString()
+	// let car2_segment = (positions.find(position => position.id === 2)).segment.toString()
+	// console.log(car1_segment)
+	// console.log(car2_segment)
+	// const car_images = 
+	// 	`
+	// 		<style> span#car1 {padding-left:${car1_segment}px;} </style>
+	// 		<style> span#car2 {padding-left:${car2_segment}px;} </style>
+	// 		<style> span.finish {position: absolute; left: 240px;} </style>
+	// 		<table>
+	// 			<tr>
+	// 				<td>
+	// 					<span>|</span><span id="car1">Car1</span><span class="finish">|</span>
+	// 				</td>
+	// 			</tr>				
+	// 			<tr>
+	// 				<td>
+	// 					<span>|</span><span id="car2">Car2</span><span class="finish">|</span>
+	// 				</td>
+	// 			</tr>				
+	// 		</table>
+	// 	`
 
 	return `
 		<main>
@@ -330,11 +344,27 @@ function raceProgress(positions) {
 			<h3>Race Track</h3>
 			<style> section#raceTrackImage {position: relative; width: 250px;} </style>
 			<section id="raceTrackImage">
-				${car_images}
+				${renderCars(positions)}
 			</section>
 		</main>
 	`
 }
+
+function renderCars(raceState) {
+		let styleSection = `<style> span.finish {position: absolute; left: ${store.track_segments+40}px;} </style>`
+		let raceSection = '<table>'
+	raceState.forEach(car => {
+		styleSection += `<style> span#car${car.id} {padding-left:${car.segment}px;} </style>`
+		raceSection += `<tr>
+											<td>
+												<span>|</span><span id="car${car.id}">Cacar${car.id}</span><span class="finish">|</span>
+											</td>
+										</tr>	`
+	})
+	raceSection += '</table>'
+	return styleSection + raceSection
+}
+
 
 function renderAt(element, html) {
 	const node = document.querySelector(element)
