@@ -90,7 +90,6 @@ async function handleCreateRace() {
 	const race = await createRace(player_id, track_id)
 	// TODO - update the store with the race id
 	store.race_id = (race.ID-1).toString()
-	console.log(store)
 	// Get the segments for the track for this race - will use to show race graphically
 	store.track_segments = (store.tracks.find(track => track.id.toString() === track_id)).segments.length
 	// The race has been created, now start the countdowns
@@ -243,11 +242,12 @@ function renderTrackCards(tracks) {
 }
 
 function renderTrackCard(track) {
-	const { id, name} = track
+	const { id, name, segments} = track
 
 	return `
 		<li id="${id}" class="card track">
 			<h3>${name}</h3>
+			<p>Segments: ${segments.length}</p>
 		</li>
 	`
 }
@@ -283,6 +283,7 @@ function resultsView(positions) {
 	positions.sort((a, b) => (a.final_position > b.final_position) ? 1 : -1)
 
 	return `
+		<style> section#raceTrackImage {display: none} </style>
 		<header>
 			<h1>Race Results</h1>
 		</header>
@@ -311,39 +312,15 @@ function raceProgress(positions) {
 		`
 	})
 
-	
-	// let car1_segment = (positions.find(position => position.id === 1)).segment.toString()
-	// let car2_segment = (positions.find(position => position.id === 2)).segment.toString()
-	// console.log(car1_segment)
-	// console.log(car2_segment)
-	// const car_images = 
-	// 	`
-	// 		<style> span#car1 {padding-left:${car1_segment}px;} </style>
-	// 		<style> span#car2 {padding-left:${car2_segment}px;} </style>
-	// 		<style> span.finish {position: absolute; left: 240px;} </style>
-	// 		<table>
-	// 			<tr>
-	// 				<td>
-	// 					<span>|</span><span id="car1">Car1</span><span class="finish">|</span>
-	// 				</td>
-	// 			</tr>				
-	// 			<tr>
-	// 				<td>
-	// 					<span>|</span><span id="car2">Car2</span><span class="finish">|</span>
-	// 				</td>
-	// 			</tr>				
-	// 		</table>
-	// 	`
-
 	return `
 		<main>
 			<h3>Leaderboard</h3>
 			<section id="leaderBoard">
 				${results}
-			</section>
-			<h3>Race Track</h3>
-			<style> section#raceTrackImage {position: relative; width: 250px;} </style>
+			</section>	
+			<style> section#raceTrackImage {position: relative; width: 300px;} </style>
 			<section id="raceTrackImage">
+				<h3>Race Track</h3>
 				${renderCars(positions)}
 			</section>
 		</main>
@@ -351,20 +328,25 @@ function raceProgress(positions) {
 }
 
 function renderCars(raceState) {
-		let styleSection = `<style> span.finish {position: absolute; left: ${store.track_segments+40}px;} </style>`
-		let raceSection = '<table>'
+	let styleSection = `<style> span.finish {position: absolute; left: 260px;} </style>`
+	let raceSection = '<table>'
+	raceState = raceState.sort((a, b) => (a.id > b.id) ? -1 : 1)
 	raceState.forEach(car => {
 		styleSection += `<style> span#car${car.id} {padding-left:${car.segment}px;} </style>`
 		raceSection += `<tr>
-											<td>
-												<span>|</span><span id="car${car.id}">Cacar${car.id}</span><span class="finish">|</span>
-											</td>
-										</tr>	`
+											<td> `
+		// console.log(`Car: ${car.id} Segment: ${car.segment} Track Segs: ${store.track_segments}`)
+    if (car.segment >= store.track_segments) {
+			raceSection += `<span>|</span><span id="car${car.id}">Car${car.id}</span><span class="finish">Finished</span>`
+		} else {
+			raceSection += `<span>|</span><span id="car${car.id}">Car${car.id}</span>`
+		}
+		raceSection += `	</td>
+										</tr>`
 	})
 	raceSection += '</table>'
 	return styleSection + raceSection
 }
-
 
 function renderAt(element, html) {
 	const node = document.querySelector(element)
@@ -407,7 +389,7 @@ function getRacers() {
 
 function createRace(player_id, track_id) {
 	player_id = parseInt(player_id)
-	track_id = parseInt(track_id)
+	track_id = track_id // Note: Changed this to pass in a string based on requirements, but it still always returns track 1
 	const body = { player_id, track_id }
 	
 	return fetch(`${SERVER}/api/races`, {
